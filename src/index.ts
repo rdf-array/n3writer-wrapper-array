@@ -6,7 +6,8 @@
  *   topoWrite(writer, quads)  — feed quads to an N3 Writer using nested [ ]
  *                               notation for blank nodes that appear as an
  *                               object exactly once (tree-edge inlining), and
- *                               ( ) notation for RDF Collections.
+ *                               ( ) notation for RDF Collections and for
+ *                               RDF- sequence terms (the rdf-sequences fork).
  *
  *   reindent(turtle, step?)   — post-process a Turtle/TriG string so that
  *                               predicate-continuation lines use `step`
@@ -25,6 +26,8 @@ export interface RdfTerm {
   value: string;
   datatype?: { value: string };
   language?: string;
+  /** the members of an RDF- sequence term (termType 'Sequence'), in order */
+  elements?: Iterable<RdfTerm>;
 }
 
 /** Minimal structural interface for quads. */
@@ -128,6 +131,19 @@ export function topoWrite(writer: TurtleWriter, quads: Iterable<RdfQuad>): void 
     }
   }
 
+  // A sequence term is written in place, ( ... ), so a blank node among its
+  // members is used by it once: count those (the sequence may itself nest).
+  const countSequence = (t: RdfTerm, graph: RdfTerm): void => {
+    if (t.termType === 'BlankNode') {
+      const ok = `${graph.value}\0${t.value}`;
+      oCount.set(ok, (oCount.get(ok) ?? 0) + 1);
+    } else if (t.termType === 'Sequence' && t.elements) {
+      for (const e of t.elements) countSequence(e, graph);
+    }
+  };
+  for (const q of normalQuads)
+    if (q.object.termType === 'Sequence') countSequence(q.object, q.graph);
+
   // List items referenced via rdf:first are single-use objects excluded from
   // normalQuads; add them to oCount so blank-node items remain inlineable.
   for (const { items, graph } of listItems.values()) {
@@ -145,6 +161,8 @@ export function topoWrite(writer: TurtleWriter, quads: Iterable<RdfQuad>): void 
     bySub.has(`${graph.value}\0BlankNode\0${bn.value}`);
 
   function buildObject(obj: RdfTerm, graph: RdfTerm): unknown {
+    if (obj.termType === 'Sequence' && obj.elements)
+      return writer.list([...obj.elements].map(e => buildObject(e, graph)));
     if (obj.termType !== 'BlankNode') return obj;
     const listEntry = listItems.get(obj.value);
     if (listEntry)

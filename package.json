@@ -1,5 +1,5 @@
 {
-  "name": "n3writer-wrapper",
+  "name": "n3writer-wrapper-array",
   "version": "1.1.0",
   "description": "Helpers for n3.Writer: topological blank-node inlining, uniform reindent, and multiline literal expansion",
   "type": "module",
@@ -21,7 +21,8 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "prepare": "npm run build"
   },
   "keywords": [
     "rdf",
@@ -32,7 +33,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ericprud/n3writer-wrapper"
+    "url": "https://github.com/rdf-array/n3writer-wrapper-array"
   },
   "author": "Eric Prud'hommeaux",
   "license": "MIT",
@@ -45,7 +46,7 @@
     }
   },
   "devDependencies": {
-    "n3": "^1.26.0",
+    "n3": "github:rdf-array/N3.js-array#rdf-sequences",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"

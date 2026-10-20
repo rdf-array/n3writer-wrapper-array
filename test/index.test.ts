@@ -134,6 +134,34 @@ describe('topoWrite', () => {
 
 // ── reindent ──────────────────────────────────────────────────────────────────
 
+describe('topoWrite: RDF- sequences', () => {
+  it('writes a sequence term as ( )', async () => {
+    const out = await writeTurtle(parseTurtle('<http://a/x> <http://a/rgb> (255 0 0) .'));
+    expect(out).toContain('(255 0 0)');
+  });
+
+  it('writes the empty sequence as ()', async () => {
+    const out = await writeTurtle(parseTurtle('<http://a/x> <http://a/p> () .'));
+    expect(out).toContain('()');
+  });
+
+  it('inlines a single-use blank node among the members', async () => {
+    const out = await writeTurtle(parseTurtle('<http://a/x> <http://a/p> ([ <http://a/q> 1 ] 2) .'));
+    expect(out).toMatch(/\(\[[^\]]*<http:\/\/a\/q> 1[^\]]*\] 2\)/);
+    expect(out).not.toMatch(/_:/);
+  });
+
+  it('writes nested sequences', async () => {
+    const out = await writeTurtle(parseTurtle('<http://a/x> <http://a/p> ((1 2) (3 4)) .'));
+    expect(out).toContain('((1 2) (3 4))');
+  });
+
+  it('round-trips', async () => {
+    const { original, reparsed } = await roundTrip('<http://a/x> <http://a/p> ((1 2) [ <http://a/q> (3) ]) .');
+    expect(reparsed.size).toBe(original.size);
+  });
+});
+
 describe('reindent', () => {
   it('converts 4-space predicate continuation to 2-space', () => {
     // n3.Writer emits 4 spaces before predicate continuations
