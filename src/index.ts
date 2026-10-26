@@ -7,7 +7,7 @@
  *                               notation for blank nodes that appear as an
  *                               object exactly once (tree-edge inlining), and
  *                               ( ) notation for RDF Collections and for
- *                               RDF- sequence terms (the rdf-sequences fork).
+ *                               rdf-array sequence terms (the rdf-sequences fork).
  *
  *   reindent(turtle, step?)   — post-process a Turtle/TriG string so that
  *                               predicate-continuation lines use `step`
@@ -26,7 +26,7 @@ export interface RdfTerm {
   value: string;
   datatype?: { value: string };
   language?: string;
-  /** the members of an RDF- sequence term (termType 'Sequence'), in order */
+  /** the members of an rdf-array sequence term (termType 'Sequence'), in order */
   elements?: Iterable<RdfTerm>;
 }
 

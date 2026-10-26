@@ -134,7 +134,7 @@ describe('topoWrite', () => {
 
 // ── reindent ──────────────────────────────────────────────────────────────────
 
-describe('topoWrite: RDF- sequences', () => {
+describe('topoWrite: rdf-array sequences', () => {
   it('writes a sequence term as ( )', async () => {
     const out = await writeTurtle(parseTurtle('<http://a/x> <http://a/rgb> (255 0 0) .'));
     expect(out).toContain('(255 0 0)');
