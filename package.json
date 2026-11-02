@@ -46,7 +46,7 @@
     }
   },
   "devDependencies": {
-    "n3": "github:rdf-array/N3.js-array#rdf-sequences",
+    "n3": "github:rdf-array/N3.js-array#rdf-undef",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"

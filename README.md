@@ -121,3 +121,8 @@ import type { TurtleWriter, RdfQuad } from 'n3writer-wrapper';
 ## License
 
 MIT
+
+## rdf-undef
+
+Branch `rdf-undef` ([rdf-undef.md](https://github.com/rdf-array/rdf-array/blob/rdf-undef/docs/rdf-undef.md)): an empty slot of a
+sequence, `( 1 undef 3 )`, passes through to N3.js-array's writer, which spells it `undef`. No code of its own beyond that. Status: done, a test in `test/index.test.ts`.

@@ -135,6 +135,13 @@ describe('topoWrite', () => {
 // ── reindent ──────────────────────────────────────────────────────────────────
 
 describe('topoWrite: rdf-array sequences', () => {
+  it('writes the empty slot of a sequence as undef', async () => {
+    const store = parseTurtle('@prefix : <http://e/> .\n:s :p ( 1 undef ( undef ) ) .');
+    const output = await writeTurtle(store, { '': 'http://e/' });
+    expect(output).toContain('(1 undef (undef))');
+    expect(parseTurtle(output).getQuads(null, null, null, null)[0].object.value).toBe(store.getQuads(null, null, null, null)[0].object.value);
+  });
+
   it('writes a sequence term as ( )', async () => {
     const out = await writeTurtle(parseTurtle('<http://a/x> <http://a/rgb> (255 0 0) .'));
     expect(out).toContain('(255 0 0)');

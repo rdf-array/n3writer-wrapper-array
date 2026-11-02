@@ -26,7 +26,7 @@ export interface RdfTerm {
   value: string;
   datatype?: { value: string };
   language?: string;
-  /** the members of an rdf-array sequence term (termType 'Sequence'), in order */
+  /** the members of an rdf-array sequence term (termType 'Sequence'), in order; a member may be the empty slot (termType 'Undef') */
   elements?: Iterable<RdfTerm>;
 }
 
