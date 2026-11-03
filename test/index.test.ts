@@ -135,6 +135,20 @@ describe('topoWrite', () => {
 // ── reindent ──────────────────────────────────────────────────────────────────
 
 describe('topoWrite: rdf-array sequences', () => {
+  it('leaves rdf:first and rdf:rest triples as triples', async () => {
+    const ladder = `
+      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      <http://a/x> <http://a/p> _:l .
+      _:l rdf:first <http://a/m> ; rdf:rest rdf:nil .
+    `;
+    const original = parseTurtle(ladder);
+    const out = await writeTurtle(original);
+    expect(out).not.toMatch(/\(/);
+    expect(out).toContain('22-rdf-syntax-ns#first');
+    expect(out).toContain('22-rdf-syntax-ns#nil');
+    expect(parseTurtle(out).size).toBe(3);
+  });
+
   it('writes a sequence term as ( )', async () => {
     const out = await writeTurtle(parseTurtle('<http://a/x> <http://a/rgb> (255 0 0) .'));
     expect(out).toContain('(255 0 0)');
