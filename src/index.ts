@@ -6,8 +6,9 @@
  *   topoWrite(writer, quads)  — feed quads to an N3 Writer using nested [ ]
  *                               notation for blank nodes that appear as an
  *                               object exactly once (tree-edge inlining), and
- *                               ( ) notation for RDF Collections and for
- *                               rdf-array sequence terms (the rdf-sequences fork).
+ *                               ( ) notation for rdf-array sequence terms (the
+ *                               rdf-sequences fork). rdf:first and rdf:rest triples
+ *                               are ordinary triples and are written as such.
  *
  *   reindent(turtle, step?)   — post-process a Turtle/TriG string so that
  *                               predicate-continuation lines use `step`
@@ -48,13 +49,9 @@ export interface TurtleWriter {
   addQuad(subject: RdfTerm, predicate: RdfTerm, object: unknown, graph?: RdfTerm): void;
 }
 
-const RDF_FIRST = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#first';
-const RDF_REST  = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#rest';
-const RDF_NIL   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#nil';
-
 /**
  * Write quads to an N3 Writer using:
- *   - ( ) notation for RDF Collections (rdf:first / rdf:rest chains)
+ *   - ( ) notation for sequence terms
  *   - [ ] notation for blank nodes that appear as an object exactly once
  *   - _:label references for blank nodes used more than once
  *
@@ -72,56 +69,11 @@ export function topoWrite(writer: TurtleWriter, quads: Iterable<RdfQuad>): void 
     return seen.size !== seen.add(k).size;
   });
 
-  // ── RDF Collection detection ──────────────────────────────────────────────
-  // Blank nodes that appear as rdf:rest values are non-head list nodes.
-  const isListRestNode = new Set<string>();
-  for (const q of deduped) {
-    if (q.predicate.value === RDF_REST && q.object.termType === 'BlankNode')
-      isListRestNode.add(q.object.value);
-  }
-
-  // Walk each list head to collect ordered items; record all list-node BN IDs.
-  const listItems = new Map<string, { items: RdfTerm[]; graph: RdfTerm }>();
-  const listNodeIds = new Set<string>();
-
-  for (const q of deduped) {
-    if (q.predicate.value !== RDF_FIRST || q.subject.termType !== 'BlankNode') continue;
-    if (isListRestNode.has(q.subject.value)) continue; // not a head
-    const headId = q.subject.value;
-    if (listItems.has(headId)) continue;
-    const graph = q.graph;
-    const items: RdfTerm[] = [];
-    let curId = headId;
-    walk: while (true) {
-      listNodeIds.add(curId);
-      let first: RdfTerm | undefined;
-      let nextId: string | null = null;
-      for (const qq of deduped) {
-        if (qq.subject.termType !== 'BlankNode' || qq.subject.value !== curId) continue;
-        if (qq.predicate.value === RDF_FIRST) first = qq.object;
-        if (qq.predicate.value === RDF_REST) {
-          nextId = qq.object.termType === 'BlankNode' ? qq.object.value : null;
-        }
-      }
-      if (!first) break walk;
-      items.push(first);
-      if (nextId === null) break walk;
-      curId = nextId;
-    }
-    listItems.set(headId, { items, graph });
-  }
-
-  // ── Normal (non-list-node) quad processing ────────────────────────────────
-  // Exclude quads whose subject is a list node; they are encoded via writer.list().
-  const normalQuads = deduped.filter(
-    q => !(q.subject.termType === 'BlankNode' && listNodeIds.has(q.subject.value)),
-  );
-
   // Index by (graph, subject); count BN object occurrences per graph.
   const bySub = new Map<string, { term: RdfTerm; graph: RdfTerm; pos: RdfQuad[] }>();
   const oCount = new Map<string, number>();
 
-  for (const q of normalQuads) {
+  for (const q of deduped) {
     const k = `${q.graph.value}\0${q.subject.termType}\0${q.subject.value}`;
     if (!bySub.has(k)) bySub.set(k, { term: q.subject, graph: q.graph, pos: [] });
     bySub.get(k)!.pos.push(q);
@@ -141,22 +93,10 @@ export function topoWrite(writer: TurtleWriter, quads: Iterable<RdfQuad>): void 
       for (const e of t.elements) countSequence(e, graph);
     }
   };
-  for (const q of normalQuads)
+  for (const q of deduped)
     if (q.object.termType === 'Sequence') countSequence(q.object, q.graph);
 
-  // List items referenced via rdf:first are single-use objects excluded from
-  // normalQuads; add them to oCount so blank-node items remain inlineable.
-  for (const { items, graph } of listItems.values()) {
-    for (const item of items) {
-      if (item.termType === 'BlankNode') {
-        const ok = `${graph.value}\0${item.value}`;
-        oCount.set(ok, (oCount.get(ok) ?? 0) + 1);
-      }
-    }
-  }
-
   const inlineable = (bn: RdfTerm, graph: RdfTerm): boolean =>
-    !listNodeIds.has(bn.value) &&
     oCount.get(`${graph.value}\0${bn.value}`) === 1 &&
     bySub.has(`${graph.value}\0BlankNode\0${bn.value}`);
 
@@ -164,9 +104,6 @@ export function topoWrite(writer: TurtleWriter, quads: Iterable<RdfQuad>): void 
     if (obj.termType === 'Sequence' && obj.elements)
       return writer.list([...obj.elements].map(e => buildObject(e, graph)));
     if (obj.termType !== 'BlankNode') return obj;
-    const listEntry = listItems.get(obj.value);
-    if (listEntry)
-      return writer.list(listEntry.items.map(item => buildObject(item, listEntry.graph)));
     if (inlineable(obj, graph)) return buildBlank(obj, graph);
     return obj;
   }
